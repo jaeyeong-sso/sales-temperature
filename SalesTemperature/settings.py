@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'salest_dashbd',
 ]
 
@@ -126,17 +127,39 @@ USE_TZ = True
 ######################################################################
 #1. For Dev run
 ######################################################################
-#STATIC_URL = '/static/'
-#STATIC_ROOT = os.path.join(BASE_DIR, 'salestda')
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'salestda')
 
 ######################################################################
 #2. For Deployment
 ######################################################################
-STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
-STATIC_URL = '/static/'
+#STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
+#STATIC_URL = '/static/'
 
-STATICFILES_DIRS = (
-    os.path.join(BASE_DIR, 'salest_dashbd/static'),
-)
+#STATICFILES_DIRS = (
+#    os.path.join(BASE_DIR, 'salest_dashbd/static'),
+#)
 ######################################################################
 
+
+STATICFILES_FINDERS = (
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+)
+
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [
+        #'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+        #'rest_framework.permissions.DjangoModelPermissions',
+        'rest_framework.permissions.AllowAny'
+    ],              
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ),
+    'DEFAULT_PARSER_CLASSES': (
+        'rest_framework.parsers.JSONParser',
+    )
+}
