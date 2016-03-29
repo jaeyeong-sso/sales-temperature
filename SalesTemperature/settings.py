@@ -127,18 +127,18 @@ USE_TZ = True
 ######################################################################
 #1. For Dev run
 ######################################################################
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'salestda')
+#STATIC_URL = '/static/'
+#STATIC_ROOT = os.path.join(BASE_DIR, 'salestda')
 
 ######################################################################
 #2. For Deployment
 ######################################################################
-#STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
-#STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
+STATIC_URL = '/static/'
 
-#STATICFILES_DIRS = (
-#    os.path.join(BASE_DIR, 'salest_dashbd/static'),
-#)
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, 'salest_dashbd/static'),
+)
 ######################################################################
 
 
