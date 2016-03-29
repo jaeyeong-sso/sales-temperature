@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'salest_dashbd',
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -76,8 +77,12 @@ WSGI_APPLICATION = 'SalesTemperature.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'django',
+        'USER': 'salest',
+        'PASSWORD': 'salest',
+        'HOST': '173.194.224.100',
+        'PORT': '3306',
     }
 }
 
@@ -118,4 +123,20 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
+######################################################################
+#1. For Dev run
+######################################################################
+#STATIC_URL = '/static/'
+#STATIC_ROOT = os.path.join(BASE_DIR, 'salestda')
+
+######################################################################
+#2. For Deployment
+######################################################################
+STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
 STATIC_URL = '/static/'
+
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, 'salest_dashbd/static'),
+)
+######################################################################
+
