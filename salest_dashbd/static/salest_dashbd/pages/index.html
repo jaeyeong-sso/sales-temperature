@@ -45,13 +45,22 @@
 	
 	<script type="text/javascript">
 		
-		var selectCategoryItem;
+        var funcLoadDescSalesVolumeData;
+        var funcLoadMonthlySalesVolumeData;
+        var funcLoadProductCategorySalesVolumeData;
+        
+        var funcSelectCategoryItem;
+		var funcSelectDayOfWeekItem;
+        
+        var funcDefaultSelectCategoryItem;
+		var funcDefaultSelectDayOfWeekItem;
+        
 		var reverseArr;
 		var selectDayOfWeekItem;
 		var sortObjectByKey;
-		
-		$(function() {
-			
+        
+		$(document).ready(function(){
+            
 			var menuCategoryItems = [];
 			
 			var dataArr_PerProductCateSalesVolume = [];
@@ -67,31 +76,88 @@
 		        hideHover: 'auto',
 		        resize: true
 			});
-			
-			reverseArr = function(input){
-			    var ret = new Array;
-			    for(var i = input.length-1; i >= 0; i--) {
-			        ret.push(input[i]);
-			    }
-			    return ret;
-			}
-			
-			/*
-			selectCategoryItem = function(element){ 
+        	
+            funcDefaultSelectDayOfWeekItem = function(element){
 				
-				var selectedItem = $(element).text();
-				$("#menu_cate_items_caption").text(selectedItem);
+				var selectedItem;
+				var jsonParams;
+                
+				if(element==null){
+					selectedItem = 'All';
+				} else {
+					selectedItem = $(element).text();
+					$("#timebase_sales_amount_items_caption").text(selectedItem);	
+				}
 				
-				var jsonParams = "{\"category\":\"" + selectedItem + "\"}";
-				
-				$('#myModal').modal('show');
+				jsonParams = "{\"dayOfWeek\":\"" + selectedItem + "\"}";
 				
 				$.ajax({
 					type: "POST",
 					data: jsonParams,
 					contentType: 'application/json',
 					dataType: "json",
-					url: "/salestda/api/monthly_product_cate_detail_sales_amount",
+					url: "/salest_dashbd/api/timebase_sales_amount",
+					success: function (response) {
+						var jsonObj = $.parseJSON(response);
+                        $("#list_timebase_sales_amount").children().remove();
+                        
+                        var keyTimeRange;
+                        var rangeStartTime;
+                        var rangeEndTime;
+                        
+                        $.each(jsonObj.total_amount, function(key, value){
+                            
+                            rangeStartTime = parseInt(key);
+							rangeEndTime = rangeStartTime + 1;
+                            
+                            if(rangeStartTime < 10){
+                                rangeStartTime = "0" + rangeStartTime;
+                            }                        
+                            if(rangeEndTime < 10){
+                                rangeEndTime = "0" + rangeEndTime;
+                            }
+                            
+							keyTimeRange = rangeStartTime + ":00" + "~"  + rangeEndTime + ":00";
+							
+                            var spanId = "#item_" + rangeStartTime;
+                            
+                            var strHtmlItem = '<a href="#" class="list-group-item">'+
+								keyTimeRange +
+								'&nbsp;&nbsp;<span id="item_'+ rangeStartTime +'" class="rounded">&nbsp;</span>' +
+								'<span class="pull-right text-muted small">' +
+								'<i class="fa fa-krw fa-fw"></i><em>' + value + '</em>' +
+								'</span></a>';
+                            
+                            $("#list_timebase_sales_amount").append(strHtmlItem);
+                            $(spanId).css("width", Math.round(parseInt(value)/350) +"px");
+                        });
+                    },
+                    error: function () {
+						alert("Error loading data! Please try again.");
+					}	
+				});
+            }
+            
+            funcSelectDayOfWeekItem = function(element){
+                $('#myModal').modal('show');
+                funcDefaultSelectDayOfWeekItem(element);
+                $('#myModal').modal('hide');
+            }
+
+                                     
+            funcDefaultSelectCategoryItem = function(element){ 
+				
+				var selectedItem = $(element).text();
+				$("#menu_cate_items_caption").text(selectedItem);
+				
+				var jsonParams = "{\"category\":\"" + selectedItem + "\"}";
+				
+				$.ajax({
+					type: "POST",
+					data: jsonParams,
+					contentType: 'application/json',
+					dataType: "json",
+					url: "/salest_dashbd/api/monthly_product_cate_detail_sales_amount",
 					success: function (response) {
 						var jsonObj = $.parseJSON(response);
 						var dataArr = jsonObj.total_amount;
@@ -126,201 +192,135 @@
 						alert("Error loading data! Please try again.");
 					}	
 				});
-				
-				$('#myModal').modal('hide');
 			}
-			
-			
-			selectDayOfWeekItem = function(element){
-				
-				var selectedItem;
-				var jsonParams;
-				
-				if(element==null){
-					selectedItem = 'All';
-				} else {
-					selectedItem = $(element).text();
-					$("#timebase_sales_amount_items_caption").text(selectedItem);	
-				}
-				
-				jsonParams = "{\"dayOfWeek\":\"" + selectedItem + "\"}";
-				
-				$('#myModal').modal('show');
-				
-				$.ajax({
-					type: "POST",
-					data: jsonParams,
-					contentType: 'application/json',
-					dataType: "json",
-					url: "/salestda/api/timebase_sales_amount",
-					success: function (response) {
-						var jsonObj = $.parseJSON(response);
-						
-						jsonObj = sortObjectByKey(jsonObj);
-						
-						$("#list_timebase_sales_amount").children().remove();
-						
-						var keyTimeRange;
-						
-						$.each(jsonObj, function(key, value){
-							rangeStartTime = parseInt(key.replace('H',''));
-							rangeEndTime = rangeStartTime + 1;
-							keyTimeRange = rangeStartTime + ":00" + "~"  + rangeEndTime + ":00";
-							
-							var spanId = "#item_" + rangeStartTime;
-							
-							var strHtmlItem = '<a href="#" class="list-group-item">'+
-								keyTimeRange +
-								'&nbsp;&nbsp;<span id="item_'+ rangeStartTime +'" class="rounded">&nbsp;</span>' +
-								'<span class="pull-right text-muted small">' +
-								'<i class="fa fa-krw fa-fw"></i><em>' + value + '</em>' +
-								'</span></a>';			
-						
-								
-							$("#list_timebase_sales_amount").append(strHtmlItem);
-							
-							$(spanId).css("width", Math.round(parseInt(value)/250) +"px");
-						});
-					},
-	        		error: function () {
-						alert("Error loading data! Please try again.");
-					}	
-				});
-				
-				$('#myModal').modal('hide');
-			}
-			*/
-			
-			sortObjectByKey = function(obj){
-			    var keys = [];
-			    var sorted_obj = {};
 
-			    for(var key in obj){
-			        if(obj.hasOwnProperty(key)){
-			            keys.push(key);
-			        }
-			    }
-			    // sort keys
-			    keys.sort();
-			    // create new array based on Sorted Keys
-			    jQuery.each(keys, function(i, key){
-			        sorted_obj[key] = obj[key];
-			    });
-			    return sorted_obj;
-			}
-					
-			$('#myModal').modal('show');
-			
-			/*
-			$.ajax({
-				type: "GET",
-				dataType: "json",
-				contentType: "application/json",
-				url: "/salestda/api/monthly_sales_vol",
-				success: function (response) {
-					
-					var jsonObj = $.parseJSON(response);
-					
-				    Morris.Line({
-				        element: 'monthly-sales-volume-chart',
-				        data: jsonObj,
-				        xkey: 'year_mon',
-				        ykeys: ['num_of_order','total_amount'],
-				        labels: ['num_of_order','Sales amount'],
-				        pointSize: 2,
-				        hideHover: 'auto',
-				        hoverCallback: function(index, options, content, row) {
-				        	var new_content = $("<div class='morris-hover-row-label'><span id='year_mon'></span></div><div class='morris-hover-point' style='color: #0b62a4'><span id='num_of_order'></span></div><div class='morris-hover-point' style='color: #7A92A3'><span id='total_amount'></span></div>");
-				        	$('#year_mon', new_content).html(row.year_mon);
-				        	$('#num_of_order',new_content).html(row.num_of_order + " 건");
-				        	$('#total_amount',new_content).html(row.total_amount + " 만원");
-				        	
-				        	return (new_content);
-				        },
-				        resize: true
-				    });
-				},
-	        	error: function () {
-					alert("Error loading data! Please try again.");
-				}	
-			});
-			
+            funcSelectCategoryItem = function(element){
+                $('#myModal').modal('show');
+                funcDefaultSelectCategoryItem(element);
+                $('#myModal').modal('hide');
+            }
+                        
+			funcLoadMonthlySalesVolumeData = function(){
+                
+                $.ajax({
+                    type: "GET",
+                    dataType: "json",
+                    contentType: "application/json",
+                    url: "/salest_dashbd/api/monthly_sales_vol",
+                    success: function (response) {
+
+                        var jsonObj = $.parseJSON(response);
+
+                        Morris.Line({
+                            element: 'monthly-sales-volume-chart',
+                            data: jsonObj,
+                            xkey: 'year_month',
+                            ykeys: ['num_of_product','total_amount'],
+                            labels: ['num_of_product','total_amount'],
+                            pointSize: 2,
+                            hideHover: 'auto',
+                            hoverCallback: function(index, options, content, row) {
+                                var new_content = $("<div class='morris-hover-row-label'><span id='year_month'></span></div><div class='morris-hover-point' style='color: #0b62a4'><span id='num_of_product'></span></div><div class='morris-hover-point' style='color: #7A92A3'><span id='total_amount'></span></div>");
+                                $('#year_month', new_content).html(row.year_month);
+                                $('#num_of_product',new_content).html(row.num_of_product + " 건");
+                                $('#total_amount',new_content).html(row.total_amount + " 만원");
+
+                                return (new_content);
+                            },
+                            resize: true
+                        });
+                    },
+                    error: function () {
+                        alert("Error loading data! Please try again.");
+                    }	
+                });
+            }
+            
+			funcLoadDescSalesVolumeData = function(){
+                
+                $.ajax({
+                    type: "GET",
+                    dataType: "json",
+                    contentType: "application/json",
+                    url: "/salest_dashbd/api/desc_total_sales_vol",
+                    success: function (response) {
+                        var jsonObj = $.parseJSON(response);
+                        var num_of_product = jsonObj.num_of_product.sum;
+                        var total_of_amount = parseInt(jsonObj.total_amount.sum / 10000)
+                        var avrg_sales_count = jsonObj.num_of_product.mean;
+                        var avrg_sales_amount = parseInt(jsonObj.total_amount.mean / 10000)
+                        $('#total_sales_count').text(num_of_product);
+                        $('#total_sales_amount').text(total_of_amount);
+                        $('#avrg_sales_count').text(avrg_sales_count);
+                        $('#avrg_sales_amount').text(avrg_sales_amount);
+                    },
+                    error: function () {
+                        alert("Error loading data! Please try again.");
+                    }
+                });
+            }
+            
 			///////////////////////////////////////////////////////////////////////////////////////////////
-		
-			$.ajax({
-				type: "GET",
-				dataType: "json",
-				contentType: "application/json",
-				url: "/salestda/api/monthly_product_cate_sales_amount",
-				success: function (response) {
-					var jsonObj = $.parseJSON(response);
-					
-					var dataArr = jsonObj.total_amount;
-					var dateKeyArr = [];	
-					
-					$.each(dataArr, function(key, value){
-						for (var key in value) {
-							if(key!='year_month'){
-								dateKeyArr.push(key);
-							}
-						}
-					});
-					
-					menuCategoryItems = dateKeyArr.filter(function(item,idx,arr){
-					    return idx==arr.indexOf(item);
-					});
-					
-					// clear before items
-					dataArr_PerProductCateSalesVolume.length = 0;
-					keyArr_PerProductCateSalesVolume.length = 0;
-					
-					dataArr_PerProductCateSalesVolume = $.extend(true, [], dataArr);
-					keyArr_PerProductCateSalesVolume = $.extend(true, [], menuCategoryItems);	
-					
-					area_chart.options.labels = keyArr_PerProductCateSalesVolume;
-					area_chart.options.ykeys = keyArr_PerProductCateSalesVolume;
-					area_chart.setData(dataArr_PerProductCateSalesVolume);
-					
-					area_chart.redraw();
-					
-					$.each(menuCategoryItems, function(key, value){
-						$("#menu_cate_items_list").append("<li><a href='#' onclick='selectCategoryItem(this);return false;'>" + value + "</a></li>");
-					});
-					$("#menu_cate_items_list").append("<li><a href='#' onclick='selectCategoryItem(this);return false;'>Category</a></li>");
-					
-				},
-        		error: function () {
-					alert("Error loading data! Please try again.");
-				}	
-			});
-			
-			$.ajax({
-				type: "GET",
-				dataType: "json",
-				contentType: "application/json",
-				url: "/salestda/api/desc_total_sales_vol",
-				success: function (response) {
-					var jsonObj = $.parseJSON(response);
-					var num_of_order = jsonObj.num_of_order.sum;
-					var total_of_amount = parseInt(jsonObj.total_amount.sum / 10000)
-					var avrg_sales_count = jsonObj.num_of_order.mean;
-					var avrg_sales_amount = parseInt(jsonObj.total_amount.mean / 10000)
-					$('#total_sales_count').text(num_of_order);
-					$('#total_sales_amount').text(total_of_amount);
-					$('#avrg_sales_count').text(avrg_sales_count);
-					$('#avrg_sales_amount').text(avrg_sales_amount);
-				},
-	        	error: function () {
-					alert("Error loading data! Please try again.");
-				}
-			});
-			*/
-			
-			$('#myModal').modal('hide');
-			
-			
-			//selectDayOfWeekItem(null);
+            funcLoadProductCategorySalesVolumeData = function(){
+                
+                $.ajax({
+                    type: "GET",
+                    dataType: "json",
+                    contentType: "application/json",
+                    url: "/salest_dashbd/api/monthly_product_cate_sales_amount",
+                    success: function (response) {
+                        var jsonObj = $.parseJSON(response);
+
+                        var dataArr = jsonObj.total_amount;
+                        var dateKeyArr = [];	
+
+                        $.each(dataArr, function(key, value){
+                            for (var key in value) {
+                                if(key!='year_month'){
+                                    dateKeyArr.push(key);
+                                }
+                            }
+                        });
+
+                        menuCategoryItems = dateKeyArr.filter(function(item,idx,arr){
+                            return idx==arr.indexOf(item);
+                        });
+
+                        // clear before items
+                        dataArr_PerProductCateSalesVolume.length = 0;
+                        keyArr_PerProductCateSalesVolume.length = 0;
+
+                        dataArr_PerProductCateSalesVolume = $.extend(true, [], dataArr);
+                        keyArr_PerProductCateSalesVolume = $.extend(true, [], menuCategoryItems);	
+
+                        area_chart.options.labels = keyArr_PerProductCateSalesVolume;
+                        area_chart.options.ykeys = keyArr_PerProductCateSalesVolume;
+                        area_chart.setData(dataArr_PerProductCateSalesVolume);
+
+                        area_chart.redraw();
+
+                        $.each(menuCategoryItems, function(key, value){
+                            $("#menu_cate_items_list").append("<li><a href='#' onclick='funcSelectCategoryItem(this);return false;'>" + value + "</a></li>");
+                        });
+                        $("#menu_cate_items_list").append("<li><a href='#' onclick='funcSelectCategoryItem(this);return false;'>Category</a></li>");
+
+                    },
+                    error: function () {
+                        alert("Error loading data! Please try again.");
+                    }	
+                });
+            }			
 		})
+        
+        $(window).load(function(){
+             
+            $('#myModal').modal('show');
+            funcLoadDescSalesVolumeData();
+            funcLoadMonthlySalesVolumeData();
+            funcLoadProductCategorySalesVolumeData();
+            funcDefaultSelectDayOfWeekItem(null);
+			$('#myModal').modal('hide');
+        })
 		
 	</script>
 	
@@ -369,7 +369,7 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="index.html">Sales Temperature</a>
+                <a class="navbar-brand" href="index.html">Sales Temperature 2.0</a>
             </div>
             <!-- /.navbar-header -->
 
@@ -380,6 +380,8 @@
                         <li>
                             <a href="index.html"><i class="fa fa-dashboard fa-fw"></i> 전체 통계 보고서</a>
                         </li>
+                        
+                        <!--
                         <li>
                             <a href="index.html"><i class="fa fa-calendar fa-fw"></i> 기간별 통계 보고서</a>
                         </li>
@@ -397,10 +399,10 @@
 		                                </button>
 		                            </span>
 		                            </div>
-		                            <!-- /input-group -->
 		                        </div>
 							</div>
                         </li>
+                        -->
                     </ul>
                 </div>
                 <!-- /.sidebar-collapse -->
@@ -520,22 +522,6 @@
                     <div class="panel panel-default">
                         <div class="panel-heading">
                             <i class="fa fa-bar-chart-o fa-fw"></i> 월별 판매량/건수 추이
-                            <!--
-                            <div class="pull-right">
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
-                                        Year
-                                        <span class="caret"></span>
-                                    </button>
-                                    <ul class="dropdown-menu pull-right" role="menu">
-                                        <li><a href="#">2015</a>
-                                        </li>
-                                        <li><a href="#">2014</a>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                            -->
                         </div>
                         <!-- /.panel-heading -->
                         <div class="panel-body">
@@ -580,14 +566,14 @@
                                     </button>
                                     <ul id="timebase_sales_amount_items_list" class="dropdown-menu pull-right" role="menu">
                                     	<!-- Fill Category Items dynamically -->
-                                    	<li><a href='#' onclick='selectDayOfWeekItem(this);return false;'>W-MON</a></li>
-										<li><a href='#' onclick='selectDayOfWeekItem(this);return false;'>W-TUE</a></li>
-										<li><a href='#' onclick='selectDayOfWeekItem(this);return false;'>W-WED</a></li>
-										<li><a href='#' onclick='selectDayOfWeekItem(this);return false;'>W-THU</a></li>
-										<li><a href='#' onclick='selectDayOfWeekItem(this);return false;'>W-FRI</a></li>
-										<li><a href='#' onclick='selectDayOfWeekItem(this);return false;'>W-SAT</a></li>
-										<li><a href='#' onclick='selectDayOfWeekItem(this);return false;'>W-SUN</a></li>
-										<li><a href='#' onclick='selectDayOfWeekItem(this);return false;'>All</a></li>
+                                    	<li><a href='#' onclick='funcSelectDayOfWeekItem(this);return false;'>W-MON</a></li>
+										<li><a href='#' onclick='funcSelectDayOfWeekItem(this);return false;'>W-TUE</a></li>
+										<li><a href='#' onclick='funcSelectDayOfWeekItem(this);return false;'>W-WED</a></li>
+										<li><a href='#' onclick='funcSelectDayOfWeekItem(this);return false;'>W-THU</a></li>
+										<li><a href='#' onclick='funcSelectDayOfWeekItem(this);return false;'>W-FRI</a></li>
+										<li><a href='#' onclick='funcSelectDayOfWeekItem(this);return false;'>W-SAT</a></li>
+										<li><a href='#' onclick='funcSelectDayOfWeekItem(this);return false;'>W-SUN</a></li>
+										<li><a href='#' onclick='funcSelectDayOfWeekItem(this);return false;'>All</a></li>
                                     </ul>
                                 </div>
                             </div>
@@ -595,23 +581,7 @@
                         <!-- /.panel-heading -->
                         <div class="panel-body">
                             <div id="list_timebase_sales_amount" class="list-group">
-	                            <!--
-	                                <a href="#" class="list-group-item">
-	                                    AM:10~11
-	                                    <span class="pull-right text-muted small"><em>4 minutes ago</em>
-	                                    </span>
-	                                </a>
-	                                <a href="#" class="list-group-item">
-	                                    AM:11~12
-	                                    <span class="pull-right text-muted small"><em>12 minutes ago</em>
-	                                    </span>
-	                                </a>
-	                            -->
                             </div>
-                            <!-- /.list-group -->
-							<!--                            
-                            <a href="#" class="btn btn-default btn-block">View All Alerts</a>
-                        	-->
                         </div>
                         <!-- /.panel-body -->
                     </div>
