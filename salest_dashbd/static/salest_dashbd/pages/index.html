@@ -97,6 +97,9 @@
 					contentType: 'application/json',
 					dataType: "json",
 					url: "/salest_dashbd/api/timebase_sales_amount",
+                    beforeSend : function(){
+                        $('#myModal').modal('show');
+                    },
 					success: function (response) {
 						var jsonObj = $.parseJSON(response);
                         $("#list_timebase_sales_amount").children().remove();
@@ -131,17 +134,17 @@
                             $("#list_timebase_sales_amount").append(strHtmlItem);
                             $(spanId).css("width", Math.round(parseInt(value)/350) +"px");
                         });
+                        $('#myModal').modal('hide');
                     },
                     error: function () {
+                        $('#myModal').modal('hide');
 						alert("Error loading data! Please try again.");
 					}	
 				});
             }
             
             funcSelectDayOfWeekItem = function(element){
-                $('#myModal').modal('show');
                 funcDefaultSelectDayOfWeekItem(element);
-                $('#myModal').modal('hide');
             }
 
                                      
@@ -158,6 +161,9 @@
 					contentType: 'application/json',
 					dataType: "json",
 					url: "/salest_dashbd/api/monthly_product_cate_detail_sales_amount",
+                    beforeSend : function(){
+                        $('#myModal').modal('show');
+                    },
 					success: function (response) {
 						var jsonObj = $.parseJSON(response);
 						var dataArr = jsonObj.total_amount;
@@ -187,17 +193,17 @@
 						area_chart.setData(dataArr_PerProductCateSalesVolume);
 						
 						area_chart.redraw();
+                        $('#myModal').modal('hide');
 					},
 	        		error: function () {
+                        $('#myModal').modal('hide');
 						alert("Error loading data! Please try again.");
 					}	
 				});
 			}
 
-            funcSelectCategoryItem = function(element){
-                $('#myModal').modal('show');
+            funcSelectCategoryItem = function(element){            
                 funcDefaultSelectCategoryItem(element);
-                $('#myModal').modal('hide');
             }
                         
 			funcLoadMonthlySalesVolumeData = function(){
@@ -207,6 +213,9 @@
                     dataType: "json",
                     contentType: "application/json",
                     url: "/salest_dashbd/api/monthly_sales_vol",
+                    beforeSend : function(){
+                        $('#myModal').modal('show');
+                    },
                     success: function (response) {
 
                         var jsonObj = $.parseJSON(response);
@@ -229,8 +238,10 @@
                             },
                             resize: true
                         });
+                        $('#myModal').modal('hide');
                     },
                     error: function () {
+                        $('#myModal').modal('hide');
                         alert("Error loading data! Please try again.");
                     }	
                 });
@@ -243,6 +254,9 @@
                     dataType: "json",
                     contentType: "application/json",
                     url: "/salest_dashbd/api/desc_total_sales_vol",
+                    beforeSend : function(){
+                        $('#myModal').modal('show');
+                    },
                     success: function (response) {
                         var jsonObj = $.parseJSON(response);
                         var num_of_product = jsonObj.num_of_product.sum;
@@ -253,8 +267,10 @@
                         $('#total_sales_amount').text(total_of_amount);
                         $('#avrg_sales_count').text(avrg_sales_count);
                         $('#avrg_sales_amount').text(avrg_sales_amount);
+                        $('#myModal').modal('hide');
                     },
                     error: function () {
+                        $('#myModal').modal('hide');
                         alert("Error loading data! Please try again.");
                     }
                 });
@@ -268,6 +284,9 @@
                     dataType: "json",
                     contentType: "application/json",
                     url: "/salest_dashbd/api/monthly_product_cate_sales_amount",
+                    beforeSend : function(){
+                        $('#myModal').modal('show');
+                    },
                     success: function (response) {
                         var jsonObj = $.parseJSON(response);
 
@@ -303,9 +322,11 @@
                             $("#menu_cate_items_list").append("<li><a href='#' onclick='funcSelectCategoryItem(this);return false;'>" + value + "</a></li>");
                         });
                         $("#menu_cate_items_list").append("<li><a href='#' onclick='funcSelectCategoryItem(this);return false;'>Category</a></li>");
-
+                        
+                        $('#myModal').modal('hide');
                     },
                     error: function () {
+                        $('#myModal').modal('hide');
                         alert("Error loading data! Please try again.");
                     }	
                 });
@@ -313,13 +334,10 @@
 		})
         
         $(window).load(function(){
-             
-            $('#myModal').modal('show');
             funcLoadDescSalesVolumeData();
             funcLoadMonthlySalesVolumeData();
             funcLoadProductCategorySalesVolumeData();
             funcDefaultSelectDayOfWeekItem(null);
-			$('#myModal').modal('hide');
         })
 		
 	</script>
