@@ -2,8 +2,9 @@ import pandas as pd
 from impala.dbapi import connect
 from impala.util import as_pandas
 import ast
+import math
 
-def agg_montly_sales_volumn(unit_numofproduct, unit_totalamount):
+def agg_montly_sales_volumn(year,unit_numofproduct, unit_totalamount):
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -13,13 +14,26 @@ def agg_montly_sales_volumn(unit_numofproduct, unit_totalamount):
         SELECT year_month, SUM(num_of_product) AS num_of_product, SUM(sales_amount) AS total_amount
         FROM (
             SELECT SUBSTR(date_receipt_num,1,7) AS year_month, num_of_product, sales_amount
-            FROM ext_tr_receipt
+            FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,4) = '""" + year +
+        """'
         ) view_tr_recipt
         GROUP BY year_month ORDER BY year_month ASC
-    """)
+        """
+    )
     df = as_pandas(cur)
+    conn.close()
+    
+    ### Fill non-included monthly row with zero base values.
+    month_index_arr = []
 
-    df_list = list(df.itertuples(index=False))
+    for month in range(1,13):
+        month_index_arr.append("{0}-{1:02d}".format(year,month))
+    
+    df_base_index = pd.DataFrame(data=month_index_arr, columns=['year_month'])
+    df_all_monatly_sales_volume = pd.merge(df, df_base_index, on='year_month',how='outer').fillna(0).sort_values(by='year_month',ascending='1')
+    ###
+
+    df_list = list(df_all_monatly_sales_volume.itertuples(index=False))
     df_column_name_list = list(df.columns.values)
 
     list_month_sales_volume = []
@@ -30,14 +44,13 @@ def agg_montly_sales_volumn(unit_numofproduct, unit_totalamount):
         
         for key,value in zip(df_column_name_list, row):
             if(key=='num_of_product'):
-                value = value / unit_numofproduct
+                value = int(round(value / unit_numofproduct))
             if(key=='total_amount'):
-                value = value / unit_totalamount
+                value = int(round(value / unit_totalamount))
             dict_month_sales_volume[key] = value
         
         list_month_sales_volume.append(dict_month_sales_volume.copy())
 
-    conn.close()
     return list_month_sales_volume
 
 
@@ -45,7 +58,7 @@ def agg_montly_sales_volumn(unit_numofproduct, unit_totalamount):
 # Describe overall stat (Whole Sales Products/Amount , Average Sales Products/Amount per daily
 #################################################################################################################################
 
-def desc_total_sales_volumn():
+def desc_total_sales_volumn(year):
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -53,13 +66,15 @@ def desc_total_sales_volumn():
     # daily transaction agg
     cur.execute('USE salest')
     cur.execute("""
-    SELECT year_month_day, SUM(num_of_product) AS num_of_product, SUM(sales_amount) AS total_amount
-    FROM (
-        SELECT SUBSTR(date_receipt_num,1,10) AS year_month_day, num_of_product, sales_amount
-        FROM ext_tr_receipt
-    ) view_tr_recipt
-    GROUP BY year_month_day ORDER BY year_month_day ASC
-    """)
+        SELECT year_month_day, SUM(num_of_product) AS num_of_product, SUM(sales_amount) AS total_amount
+        FROM (
+            SELECT SUBSTR(date_receipt_num,1,10) AS year_month_day, num_of_product, sales_amount
+            FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,4) = '""" + year +
+        """'
+        ) view_tr_recipt
+        GROUP BY year_month_day ORDER BY year_month_day ASC
+        """
+    )
 
     df_tr_agg_daily = as_pandas(cur)
     conn.close()
@@ -74,7 +89,7 @@ def desc_total_sales_volumn():
     return df_desc.to_dict()
 
 #################################################################################################################################
-def agg_montly_total_amount_by_product_cate():
+def agg_montly_total_amount_by_product_cate(year):
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -82,17 +97,30 @@ def agg_montly_total_amount_by_product_cate():
     cur.execute('USE salest')
     cur.execute(
     """
-    SELECT SUBSTR(ext_tr_receipt.date_receipt_num,1,7) AS year_month, ext_tr_receipt.num_of_product, ext_tr_receipt.sales_amount AS total_amount,
-    ext_menumap_info.product_name, ext_menumap_info.cate_name, ext_menumap_info.price
-    FROM ext_tr_receipt JOIN ext_menumap_info USING (product_code)
-    """)
+        SELECT SUBSTR(view_tr_receipt.date_receipt_num,1,7) AS year_month, 
+              view_tr_receipt.num_of_product, view_tr_receipt.sales_amount AS total_amount,
+            ext_menumap_info.product_name, ext_menumap_info.cate_name, ext_menumap_info.price
+        FROM (SELECT * FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,4) = '""" + year + "'" +
+    """) view_tr_receipt JOIN ext_menumap_info USING (product_code)"""
+    )
+
     df_tr_receipt_menumap = as_pandas(cur)
+    conn.close()
     
     def aggregation(row):
         total_amount = row['total_amount'].sum()
         return pd.Series([total_amount], index=['total_amount'])
     
     df_monthly_product_tr = df_tr_receipt_menumap.groupby(['year_month','cate_name']).apply(aggregation)
+    
+    df_default = genDefaultMontlyCateTotalAmountDataFrame(df_monthly_product_tr,year)
+    df_all_monatly_sales_volume = pd.merge(df_default, df_monthly_product_tr, left_index=True, right_index=True, how='outer').fillna(0).sort_index(ascending='1')
+
+    def post_aggregation(row):
+        return row['total_amount_x'] + row['total_amount_y']
+    
+    df_all_monatly_sales_volume['total_amount'] = df_all_monatly_sales_volume.apply(post_aggregation, axis=1)
+    df_all_monatly_sales_volume.drop(['total_amount_x','total_amount_y'], axis=1, inplace=True)
 
     def gen_dict_total_amount(month_rows):
         monthlyDict = {}
@@ -109,22 +137,21 @@ def agg_montly_total_amount_by_product_cate():
         monthlyDict['year_month'] = month_rows.index.get_level_values('year_month')[0]
 
         return monthlyDict
-
-
-    mothlyTotalAmountDictItems = df_monthly_product_tr.groupby(df_monthly_product_tr.index.get_level_values('year_month')).apply(gen_dict_total_amount)
-
+    
+    mothlyTotalAmountDictItems = df_all_monatly_sales_volume.groupby(df_all_monatly_sales_volume.index.get_level_values('year_month')).apply(gen_dict_total_amount)    
+ 
     mothlyTotalAmountDict = {}
     mothlyTotalAmountList = []
     for item in mothlyTotalAmountDictItems:
         mothlyTotalAmountList.append(item)
     mothlyTotalAmountDict['total_amount'] = mothlyTotalAmountList
 
-    return mothlyTotalAmountDict;
+    return mothlyTotalAmountDict
 
 
 #################################################################################################################################
 
-def agg_montly_total_amount_by_product(product_cate):
+def agg_montly_total_amount_by_product(year, product_cate):
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -137,13 +164,16 @@ def agg_montly_total_amount_by_product(product_cate):
                 ext_tr_receipt.num_of_product AS num_of_product, ext_tr_receipt.sales_amount AS total_amount,
                 ext_menumap_info.product_name AS product_name, ext_menumap_info.cate_name AS cate_name, ext_menumap_info.price
             FROM ext_tr_receipt JOIN ext_menumap_info USING (product_code)
+            WHERE SUBSTR(date_receipt_num,1,4) = '""" + year + "'" +
+        """
         ) view_tr_receipt_menumap
         WHERE cate_name =
         """ + "'" + product_cate.encode('utf8') + "'"
     )
     
     df_category = as_pandas(cur)
-
+    conn.close()
+        
     column_func_tuple = [('total_amount','sum')]
     df_monthly_product_tr = df_category.groupby(['year_month','product_name'])['total_amount'].agg(column_func_tuple)
 
@@ -218,7 +248,8 @@ def analysis_timebase_sales_amount(day_of_week):
         """
     )
     df_by_weekofday = as_pandas(cur)
-    
+    conn.close()
+        
     def calc_average_amount(row):
         return row.total_amount / len(target_date_tuple)
 
@@ -247,3 +278,24 @@ def gen_dict_total_amount(row):
     monthlyDict['year_month'] = row.name
  
     return monthlyDict
+
+
+def genDefaultMontlyCateTotalAmountDataFrame(df_monthly_product_tr,year):
+    unique_count_of_category = len(df_monthly_product_tr.index.get_level_values(1).unique())
+
+    month_index_arr = []
+    cate_index_arr = []
+
+    for month in range(1,13):
+        for cate in range(unique_count_of_category):
+            month_index_arr.append("{0}-{1:02d}".format(year,month))
+
+    unique_cate_index_arr = df_monthly_product_tr.ix[0:unique_count_of_category].index.get_level_values(1)
+
+    for month in range(1,13):
+        for cate in unique_cate_index_arr:
+            cate_index_arr.append(cate)
+
+    full_month_cate_multi_index = pd.MultiIndex.from_tuples(zip(month_index_arr, cate_index_arr), names=['year_month', 'cate_name'])
+    df_full_month_cate_default = pd.DataFrame(0, index=full_month_cate_multi_index, columns=['total_amount'])
+    return df_full_month_cate_default

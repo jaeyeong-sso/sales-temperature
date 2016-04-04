@@ -82,7 +82,8 @@ DATABASES = {
         'NAME': 'django',
         'USER': 'salest',
         'PASSWORD': 'salest',
-        'HOST': '173.194.224.100',
+        'HOST': '192.168.118.1',
+        #'HOST': '173.194.224.100',
         'PORT': '3306',
     }
 }
@@ -127,18 +128,18 @@ USE_TZ = True
 ######################################################################
 #1. For Dev run
 ######################################################################
-#STATIC_URL = '/static/'
-#STATIC_ROOT = os.path.join(BASE_DIR, 'salestda')
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'salest_dashbd')
 
 ######################################################################
 #2. For Deployment
 ######################################################################
-STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
-STATIC_URL = '/static/'
+#STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
+#STATIC_URL = '/static/'
 
-STATICFILES_DIRS = (
-    os.path.join(BASE_DIR, 'salest_dashbd/static'),
-)
+#STATICFILES_DIRS = (
+#    os.path.join(BASE_DIR, 'salest_dashbd/static'),
+#)
 ######################################################################
 
 

@@ -58,6 +58,10 @@
 		var reverseArr;
 		var selectDayOfWeekItem;
 		var sortObjectByKey;
+		
+		var funcQueryReportPerYear;
+		
+		var curSelectYear;
         
 		$(document).ready(function(){
             
@@ -65,6 +69,8 @@
 			
 			var dataArr_PerProductCateSalesVolume = [];
 			var keyArr_PerProductCateSalesVolume = [];
+			
+			var dataArr_montlyTotalSalesVolume = [];
 			
 			var area_chart = Morris.Area({
 		        element: 'per-product-category-sales-volume-chart',
@@ -76,6 +82,26 @@
 		        hideHover: 'auto',
 		        resize: true
 			});
+			
+            var line_chart = Morris.Line({
+                element: 'monthly-sales-volume-chart',
+                data: dataArr_montlyTotalSalesVolume,	//jsonObj,
+                xkey: 'year_month',
+                ykeys: ['num_of_product','total_amount'],
+                labels: ['num_of_product','total_amount'],
+                pointSize: 2,
+                hideHover: 'auto',
+                hoverCallback: function(index, options, content, row) {
+                    var new_content = $("<div class='morris-hover-row-label'><span id='year_month'></span></div><div class='morris-hover-point' style='color: #0b62a4'><span id='num_of_product'></span></div><div class='morris-hover-point' style='color: #7A92A3'><span id='total_amount'></span></div>");
+                    $('#year_month', new_content).html(row.year_month);
+                    $('#num_of_product',new_content).html(row.num_of_product + " 건");
+                    $('#total_amount',new_content).html(row.total_amount + " 만원");
+
+                    return (new_content);
+                },
+                
+                resize: true
+            });
         	
             funcDefaultSelectDayOfWeekItem = function(element){
 				
@@ -148,12 +174,13 @@
             }
 
                                      
-            funcDefaultSelectCategoryItem = function(element){ 
+            funcDefaultSelectCategoryItem = function(element, year){ 
 				
 				var selectedItem = $(element).text();
 				$("#menu_cate_items_caption").text(selectedItem);
 				
-				var jsonParams = "{\"category\":\"" + selectedItem + "\"}";
+				var jsonParams = "{\"category\":\"" + selectedItem + "\""+ 
+								 "\"year\":\"" + year + "\"}";
 				
 				$.ajax({
 					type: "POST",
@@ -202,17 +229,17 @@
 				});
 			}
 
-            funcSelectCategoryItem = function(element){            
-                funcDefaultSelectCategoryItem(element);
+            funcSelectCategoryItem = function(element, year){            
+                funcDefaultSelectCategoryItem(element, year);
             }
                         
-			funcLoadMonthlySalesVolumeData = function(){
+			funcLoadMonthlySalesVolumeData = function(year){
                 
                 $.ajax({
                     type: "GET",
                     dataType: "json",
                     contentType: "application/json",
-                    url: "/salest_dashbd/api/monthly_sales_vol",
+                    url: "/salest_dashbd/api/monthly_sales_vol/" + year,
                     beforeSend : function(){
                         $('#myModal').modal('show');
                     },
@@ -220,24 +247,12 @@
 
                         var jsonObj = $.parseJSON(response);
 
-                        Morris.Line({
-                            element: 'monthly-sales-volume-chart',
-                            data: jsonObj,
-                            xkey: 'year_month',
-                            ykeys: ['num_of_product','total_amount'],
-                            labels: ['num_of_product','total_amount'],
-                            pointSize: 2,
-                            hideHover: 'auto',
-                            hoverCallback: function(index, options, content, row) {
-                                var new_content = $("<div class='morris-hover-row-label'><span id='year_month'></span></div><div class='morris-hover-point' style='color: #0b62a4'><span id='num_of_product'></span></div><div class='morris-hover-point' style='color: #7A92A3'><span id='total_amount'></span></div>");
-                                $('#year_month', new_content).html(row.year_month);
-                                $('#num_of_product',new_content).html(row.num_of_product + " 건");
-                                $('#total_amount',new_content).html(row.total_amount + " 만원");
-
-                                return (new_content);
-                            },
-                            resize: true
-                        });
+                        dataArr_montlyTotalSalesVolume.length = 0;
+                        dataArr_montlyTotalSalesVolume = $.extend(true, [], jsonObj);
+                        
+						line_chart.setData(dataArr_montlyTotalSalesVolume);
+						line_chart.redraw();
+						
                         $('#myModal').modal('hide');
                     },
                     error: function () {
@@ -247,13 +262,13 @@
                 });
             }
             
-			funcLoadDescSalesVolumeData = function(){
+			funcLoadDescSalesVolumeData = function(year){
                 
                 $.ajax({
                     type: "GET",
                     dataType: "json",
                     contentType: "application/json",
-                    url: "/salest_dashbd/api/desc_total_sales_vol",
+                    url: "/salest_dashbd/api/desc_total_sales_vol/" + year,
                     beforeSend : function(){
                         $('#myModal').modal('show');
                     },
@@ -277,13 +292,13 @@
             }
             
 			///////////////////////////////////////////////////////////////////////////////////////////////
-            funcLoadProductCategorySalesVolumeData = function(){
+            funcLoadProductCategorySalesVolumeData = function(year){
                 
                 $.ajax({
                     type: "GET",
                     dataType: "json",
                     contentType: "application/json",
-                    url: "/salest_dashbd/api/monthly_product_cate_sales_amount",
+                    url: "/salest_dashbd/api/monthly_product_cate_sales_amount/" + year,
                     beforeSend : function(){
                         $('#myModal').modal('show');
                     },
@@ -330,14 +345,27 @@
                         alert("Error loading data! Please try again.");
                     }	
                 });
-            }			
+            }	
+			
+			
+    		funcQueryReportPerYear = function(year){
+    			
+    			curSelectYear = year;
+    			
+				funcLoadDescSalesVolumeData(curSelectYear);
+				funcLoadMonthlySalesVolumeData(curSelectYear);
+				funcLoadProductCategorySalesVolumeData(curSelectYear);
+    		}
+
 		})
-        
+            
         $(window).load(function(){
+        	/*
             funcLoadDescSalesVolumeData();
             funcLoadMonthlySalesVolumeData();
             funcLoadProductCategorySalesVolumeData();
             funcDefaultSelectDayOfWeekItem(null);
+            */
         })
 		
 	</script>
@@ -362,7 +390,7 @@
 			<div class="modal-dialog">
 				<div class="modal-content">
 					<div class="modal-header">
-						<h4 class="modal-title">Processing...</h4>
+						<h4 class="modal-title">데이터 분석 중 입니다...</h4>
  					</div>
 					<div class="modal-body">
 						<div class="progress">
@@ -371,7 +399,7 @@
 						</div>
                     </div>
 					<div class="modal-footer">
-						Please wait to be completed.
+						완료 될 때까지 잠시만 기다려 주세요..
 					</div>
 				</div>
 			</div>
@@ -396,7 +424,7 @@
                 <div class="sidebar-nav navbar-collapse">
                     <ul class="nav" id="side-menu">
                         <li>
-                            <a href="index.html"><i class="fa fa-dashboard fa-fw"></i> 전체 통계 보고서</a>
+                            <a href="index.html"><i class="fa fa-calendar fa-fw"></i> 연도별 통계 보고서</a>
                         </li>
                         
                         <!--
@@ -431,7 +459,20 @@
         <div id="page-wrapper">
             <div class="row">
                 <div class="col-lg-12">
-                    <h1 class="page-header">전체 통계 보고서</h1>
+                    <h1 class="page-header">
+                    	<table width="100%">
+                    		<tr>
+                    			<td>연도별 통계 보고서</td>
+                    			<td align="right"><small></small></td>
+	                    		<td align="right">
+				                	<div class="btn-group" role="group" aria-label="...">
+			  						<button type="button" class="btn btn-default" onclick="funcQueryReportPerYear('2014');return false;">2014</button>
+				  						<button type="button" class="btn btn-default" onclick="funcQueryReportPerYear('2015');return false;">2015</button>
+									</div>
+								</td>
+							</tr>
+						</table>
+	                </h1>
                 </div>
                 <!-- /.col-lg-12 -->
             </div>

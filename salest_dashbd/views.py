@@ -22,23 +22,23 @@ def index(request):
 
 
 @api_view(['GET'])
-def get_monthly_sales_volumn_data(request):
+def get_monthly_sales_volumn_data(request,year):
     if request.method == 'GET':
-        list_df = dao.agg_montly_sales_volumn(1,10000)
+        list_df = dao.agg_montly_sales_volumn(year,1,10000)
         content = JSONRenderer().render(list_df)
         return Response(content, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
-def get_desc_total_sales_volumn(request):
+def get_desc_total_sales_volumn(request,year):
     if request.method == 'GET':
-        desc_dict = dao.desc_total_sales_volumn()
+        desc_dict = dao.desc_total_sales_volumn(year)
         content = JSONRenderer().render(desc_dict)
         return Response(content, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
-def get_monthly_total_amount_per_product_cate(request):
+def get_monthly_total_amount_per_product_cate(request,year):
     if request.method == 'GET':
-        dictData = dao.agg_montly_total_amount_by_product_cate()
+        dictData = dao.agg_montly_total_amount_by_product_cate(year)
         content = JSONRenderer().render(dictData)
         return Response(content, status=status.HTTP_200_OK)
 
@@ -47,10 +47,11 @@ def get_monthly_total_amount_per_product_cate(request):
 def get_monthly_total_amount_product_cate_detail(request,format=None):
     if request.method == 'POST':
         cateReqParam = request.data['category']
+        yearReqParam = request.data['year']
         if cateReqParam == 'Category':
             dictData = dao.agg_montly_total_amount_by_product_cate()
         else:
-            dictData = dao.agg_montly_total_amount_by_product(cateReqParam)       
+            dictData = dao.agg_montly_total_amount_by_product(yearReqParam, cateReqParam)       
         content = JSONRenderer().render(dictData)
         return Response(content, status=status.HTTP_200_OK)
     
