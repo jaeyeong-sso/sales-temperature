@@ -53,7 +53,6 @@
 		var funcSelectDayOfWeekItem;
         
         var funcDefaultSelectCategoryItem;
-		var funcDefaultSelectDayOfWeekItem;
         
 		var reverseArr;
 		var selectDayOfWeekItem;
@@ -103,7 +102,7 @@
                 resize: true
             });
         	
-            funcDefaultSelectDayOfWeekItem = function(element){
+            funcSelectDayOfWeekItem = function(element){
 				
 				var selectedItem;
 				var jsonParams;
@@ -122,7 +121,7 @@
 					data: jsonParams,
 					contentType: 'application/json',
 					dataType: "json",
-					url: "/salest_dashbd/api/timebase_sales_amount",
+					url: "/salest_dashbd/api/timebase_sales_amount/" + curSelectYear,
                     beforeSend : function(){
                         $('#myModal').modal('show');
                     },
@@ -169,10 +168,6 @@
 				});
             }
             
-            funcSelectDayOfWeekItem = function(element){
-                funcDefaultSelectDayOfWeekItem(element);
-            }
-
                                      
             funcDefaultSelectCategoryItem = function(element, year){ 
 				
@@ -354,6 +349,7 @@
 				funcLoadDescSalesVolumeData(curSelectYear);
 				funcLoadMonthlySalesVolumeData(curSelectYear);
 				funcLoadProductCategorySalesVolumeData(curSelectYear);
+				funcSelectDayOfWeekItem(null);
     		}
 
 		})

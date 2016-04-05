@@ -59,10 +59,10 @@ def get_monthly_total_amount_product_cate_detail(request,year,format=None):
     
 @api_view(['POST'])
 @parser_classes((JSONParser,))
-def get_timebase_sales_amount_info(request,format=None):
+def get_timebase_sales_amount_info(request,year,format=None):
     if request.method == 'POST':
-        reqParam = request.data['dayOfWeek']
-        dictData = dao.analysis_timebase_sales_amount(reqParam)
+        dayOfWeekReqParam = request.data['dayOfWeek']
+        dictData = dao.analysis_timebase_sales_amount(year,dayOfWeekReqParam)
         content = JSONRenderer().render(dictData)
         return Response(content, status=status.HTTP_200_OK)
     

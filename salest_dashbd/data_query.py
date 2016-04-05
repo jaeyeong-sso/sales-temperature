@@ -228,33 +228,39 @@ def agg_montly_total_amount_by_product(year, product_cate):
     
     return mothlyTotalAmountDict
 
+
 #################################################################################################################################
 # day_of_week : W-MON, W-TUE, W-WED, W-THU, W-FRI, W-SAT, W-SUN
 #################################################################################################################################
-def analysis_timebase_sales_amount(day_of_week):
+def analysis_timebase_sales_amount(year, day_of_week):
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
 
     cur.execute('USE salest')
     
+    start_date = "%s/01/01" % year
+    end_date = "%s/12/31" % year
+    
     if(day_of_week=='All'):
-        target_date_idx = pd.date_range("2014/12/01","2015/12/31")
+        target_date_idx = pd.date_range(start_date,end_date)
     else:
-        target_date_idx = pd.date_range("2014/12/01","2015/12/31", freq=day_of_week)
+        target_date_idx = pd.date_range(start_date,end_date, freq=day_of_week)
         
     target_date_arr = target_date_idx.strftime('%Y-%m-%d')
     target_date_tuple = tuple(target_date_arr)
 
     cur.execute(
         """
-        SELECT time_hour, CAST(SUM(sales_amount) as INTEGER) AS total_amount, COUNT(sales_amount)
+        SELECT time_hour, CAST(SUM(sales_amount) as INTEGER) AS total_amount, 
+        COUNT(sales_amount) as num_of_transaction,
+        COUNT(DISTINCT year_month_day) as date_count
         FROM(
             SELECT SUBSTR(date_receipt_num,1,10) AS year_month_day,
             SUBSTR(tr_time,1,2) AS time_hour,
             sales_amount
             FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,10) IN %s
-            """ % (target_date_tuple,) + 
+            """ % (target_date_tuple,) +
             """
         ) view_tr_total_amount_by_dayofweek
         GROUP BY time_hour ORDER BY time_hour ASC
@@ -264,7 +270,7 @@ def analysis_timebase_sales_amount(day_of_week):
     conn.close()
         
     def calc_average_amount(row):
-        return row.total_amount / len(target_date_tuple)
+        return row.total_amount / row.date_count
 
     df_by_weekofday['total_amount'] = df_by_weekofday.apply(calc_average_amount,axis=1)
     df_by_weekofday.set_index('time_hour',inplace=True)
