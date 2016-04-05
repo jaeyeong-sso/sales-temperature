@@ -1,3 +1,5 @@
+#-*- coding: utf-8 -*-
+
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.decorators import parser_classes
@@ -44,14 +46,13 @@ def get_monthly_total_amount_per_product_cate(request,year):
 
 @api_view(['POST'])
 @parser_classes((JSONParser,))
-def get_monthly_total_amount_product_cate_detail(request,format=None):
+def get_monthly_total_amount_product_cate_detail(request,year,format=None):
     if request.method == 'POST':
         cateReqParam = request.data['category']
-        yearReqParam = request.data['year']
         if cateReqParam == 'Category':
             dictData = dao.agg_montly_total_amount_by_product_cate()
         else:
-            dictData = dao.agg_montly_total_amount_by_product(yearReqParam, cateReqParam)       
+            dictData = dao.agg_montly_total_amount_by_product(year, cateReqParam)       
         content = JSONRenderer().render(dictData)
         return Response(content, status=status.HTTP_200_OK)
     

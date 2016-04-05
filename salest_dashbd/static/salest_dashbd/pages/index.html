@@ -43,7 +43,7 @@
         <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
     <![endif]-->
 	
-	<script type="text/javascript">
+	<script type="text/javascript" charset="utf-8">
 		
         var funcLoadDescSalesVolumeData;
         var funcLoadMonthlySalesVolumeData;
@@ -179,15 +179,14 @@
 				var selectedItem = $(element).text();
 				$("#menu_cate_items_caption").text(selectedItem);
 				
-				var jsonParams = "{\"category\":\"" + selectedItem + "\""+ 
-								 "\"year\":\"" + year + "\"}";
+				var jsonParams = "{\"category\":\"" + selectedItem + "\"}";
 				
 				$.ajax({
 					type: "POST",
 					data: jsonParams,
-					contentType: 'application/json',
+					contentType: 'application/json; charset=UTF-8',
 					dataType: "json",
-					url: "/salest_dashbd/api/monthly_product_cate_detail_sales_amount",
+					url: "/salest_dashbd/api/monthly_product_cate_detail_sales_amount/" + year,
                     beforeSend : function(){
                         $('#myModal').modal('show');
                     },
@@ -229,8 +228,8 @@
 				});
 			}
 
-            funcSelectCategoryItem = function(element, year){            
-                funcDefaultSelectCategoryItem(element, year);
+            funcSelectCategoryItem = function(element){            
+                funcDefaultSelectCategoryItem(element, curSelectYear);
             }
                         
 			funcLoadMonthlySalesVolumeData = function(year){

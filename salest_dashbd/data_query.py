@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import pandas as pd
 from impala.dbapi import connect
 from impala.util import as_pandas
@@ -113,7 +115,7 @@ def agg_montly_total_amount_by_product_cate(year):
     
     df_monthly_product_tr = df_tr_receipt_menumap.groupby(['year_month','cate_name']).apply(aggregation)
     
-    df_default = genDefaultMontlyCateTotalAmountDataFrame(df_monthly_product_tr,year)
+    df_default = genDefaultMontlyCateTotalAmountDataFrame(df_monthly_product_tr,year, 'cate_name')
     df_all_monatly_sales_volume = pd.merge(df_default, df_monthly_product_tr, left_index=True, right_index=True, how='outer').fillna(0).sort_index(ascending='1')
 
     def post_aggregation(row):
@@ -155,38 +157,50 @@ def agg_montly_total_amount_by_product(year, product_cate):
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
-
-    cur.execute('USE salest')
-    cur.execute(
-        """
-        SELECT * FROM (
-            SELECT SUBSTR(ext_tr_receipt.date_receipt_num,1,7) AS year_month, 
-                ext_tr_receipt.num_of_product AS num_of_product, ext_tr_receipt.sales_amount AS total_amount,
-                ext_menumap_info.product_name AS product_name, ext_menumap_info.cate_name AS cate_name, ext_menumap_info.price
-            FROM ext_tr_receipt JOIN ext_menumap_info USING (product_code)
-            WHERE SUBSTR(date_receipt_num,1,4) = '""" + year + "'" +
-        """
-        ) view_tr_receipt_menumap
-        WHERE cate_name =
-        """ + "'" + product_cate.encode('utf8') + "'"
-    )
     
-    df_category = as_pandas(cur)
+    cur.execute('USE salest')
+    
+    query_str = """
+        SELECT * FROM (
+            SELECT SUBSTR(view_tr_receipt.date_receipt_num,1,7) AS year_month, 
+                  view_tr_receipt.num_of_product, view_tr_receipt.sales_amount AS total_amount,
+                  ext_menumap_info.product_name, ext_menumap_info.cate_name, ext_menumap_info.price
+            FROM (SELECT * FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,4) = '%s'
+            ) view_tr_receipt JOIN ext_menumap_info USING (product_code)
+        ) view_tr_receipt_menumap
+        WHERE cate_name = '%s'
+        """  % (year,product_cate)
+        
+    cur.execute(query_str.encode("UTF-8"))
+    
+    df_monthly_product_tr = as_pandas(cur)
     conn.close()
         
     column_func_tuple = [('total_amount','sum')]
-    df_monthly_product_tr = df_category.groupby(['year_month','product_name'])['total_amount'].agg(column_func_tuple)
+    df_monthly_summary = df_monthly_product_tr.groupby(['year_month','product_name'])['total_amount'].agg(column_func_tuple)
+    df_monthly_summary.rename(columns={'total_amount': 'total_amount_B'}, inplace=True)
 
-    # Overall Top 10 menu items in category 
+    df_default = genDefaultMontlyCateTotalAmountDataFrame(df_monthly_summary,year, 'product_name')
+    df_default.rename(columns={'total_amount': 'total_amount_A'}, inplace=True)
+
+    df_per_category = pd.concat([df_default, df_monthly_summary], axis=1).fillna(0)
+
+    def post_aggregation(row):
+        return row[0] + row[1]
     
-    df_topten_products_by_total_amount = df_category.groupby(['product_name']).sum().sort_values(by='total_amount', ascending=False)[:10]
+    df_per_category['total_amount'] = df_per_category.apply(post_aggregation, axis=1)
+    df_per_category.drop(['total_amount_A','total_amount_B'],axis=1,inplace=True)
+  
+     # Overall Top 10 menu items in category 
+    
+    df_topten_products_by_total_amount = df_monthly_product_tr.groupby(['product_name']).sum().sort_values(by='total_amount', ascending=False)[:10]
     df_topten_products_by_total_amount.drop(['num_of_product'],axis=1, inplace=True)
     df_topten_products_by_total_amount.rename(columns={'total_amount':'overall_total_amount'},inplace=True)
 
     # Merge the above two dataframes
-    df_new = df_monthly_product_tr.reset_index(level=0)
+    df_new = df_per_category.reset_index(level=0)
     df_merged = pd.merge(df_new, df_topten_products_by_total_amount, left_index=True, right_index=True, how='left').sort_values(by='year_month', ascending=True)
-
+    
     def agg_monthly_items_summary(row):
         sr_columns = row[row['overall_total_amount'].notnull()].index
         sr_values = row[row['overall_total_amount'].notnull()]['total_amount']
@@ -198,13 +212,12 @@ def agg_montly_total_amount_by_product(year, product_cate):
         sr_values = sr_values.append(sr_etc)
 
         return pd.Series(sr_values, index=sr_columns)
-
+    
     df_merged_new = df_merged.reset_index(level=0)
-    df_merged_new.groupby(['year_month'])
 
-    df_agg_monthly_summary = df_merged.groupby(['year_month']).apply(agg_monthly_items_summary).unstack()
+    df_agg_monthly_summary = df_merged.groupby(['year_month']).apply(agg_monthly_items_summary)#.unstack()
     df_agg_monthly_summary.fillna(0,inplace=True)
-
+    
     monthlyDictItems = df_agg_monthly_summary.apply(gen_dict_total_amount,axis=1)
     
     mothlyTotalAmountDict = {}
@@ -280,7 +293,7 @@ def gen_dict_total_amount(row):
     return monthlyDict
 
 
-def genDefaultMontlyCateTotalAmountDataFrame(df_monthly_product_tr,year):
+def genDefaultMontlyCateTotalAmountDataFrame(df_monthly_product_tr,year, second_index_name):
     unique_count_of_category = len(df_monthly_product_tr.index.get_level_values(1).unique())
 
     month_index_arr = []
@@ -290,12 +303,14 @@ def genDefaultMontlyCateTotalAmountDataFrame(df_monthly_product_tr,year):
         for cate in range(unique_count_of_category):
             month_index_arr.append("{0}-{1:02d}".format(year,month))
 
-    unique_cate_index_arr = df_monthly_product_tr.ix[0:unique_count_of_category].index.get_level_values(1)
+    unique_cate_index_arr = df_monthly_product_tr.index.get_level_values(1).unique()
+    #df_monthly_product_tr.ix[0:unique_count_of_category].index.get_level_values(1)
 
     for month in range(1,13):
         for cate in unique_cate_index_arr:
             cate_index_arr.append(cate)
 
-    full_month_cate_multi_index = pd.MultiIndex.from_tuples(zip(month_index_arr, cate_index_arr), names=['year_month', 'cate_name'])
+    full_month_cate_multi_index = pd.MultiIndex.from_tuples(zip(month_index_arr, cate_index_arr), 
+                                                  names=['year_month', second_index_name])
     df_full_month_cate_default = pd.DataFrame(0, index=full_month_cate_multi_index, columns=['total_amount'])
     return df_full_month_cate_default
