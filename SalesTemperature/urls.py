@@ -19,4 +19,5 @@ from django.contrib import admin
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^salest_dashbd/', include('salest_dashbd.urls')),
+    url(r'^', include('salest_dashbd.urls')),
 ]

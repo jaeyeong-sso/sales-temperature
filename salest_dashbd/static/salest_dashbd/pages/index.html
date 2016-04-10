@@ -1,6 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
+{% load staticfiles %}
 
+<html>
 <head>
 
     <meta charset="utf-8">
@@ -19,22 +19,22 @@
 	<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
 	
     <!-- Bootstrap Core CSS -->
-    <link href="../bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'salest_dashbd/bower_components/bootstrap/dist/css/bootstrap.min.css' %}" rel="stylesheet">
 
     <!-- MetisMenu CSS -->
-    <link href="../bower_components/metisMenu/dist/metisMenu.min.css" rel="stylesheet">
+    <link href="{% static 'salest_dashbd/bower_components/metisMenu/dist/metisMenu.min.css' %}" rel="stylesheet">
 
     <!-- Timeline CSS -->
-    <link href="../dist/css/timeline.css" rel="stylesheet">
+    <link href="{% static 'salest_dashbd/dist/css/timeline.css' %}" rel="stylesheet">
 
     <!-- Custom CSS -->
-    <link href="../dist/css/sb-admin-2.css" rel="stylesheet">
+    <link href="{% static 'salest_dashbd/dist/css/sb-admin-2.css' %}" rel="stylesheet">
 
     <!-- Morris Charts CSS -->
-    <link href="../bower_components/morrisjs/morris.css" rel="stylesheet">
+    <link href="{% static 'salest_dashbd/bower_components/morrisjs/morris.css' %}" rel="stylesheet">
 
     <!-- Custom Fonts -->
-    <link href="../bower_components/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href="{% static 'salest_dashbd/bower_components/font-awesome/css/font-awesome.min.css' %}" rel="stylesheet" type="text/css">
 
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -346,6 +346,10 @@
     			
     			curSelectYear = year;
     			
+    			var year_combo_caption = curSelectYear + '&nbsp;<span class="caret"></span>'
+    			
+				$("#selected_year_caption").html(year_combo_caption);
+				
 				funcLoadDescSalesVolumeData(curSelectYear);
 				funcLoadMonthlySalesVolumeData(curSelectYear);
 				funcLoadProductCategorySalesVolumeData(curSelectYear);
@@ -355,12 +359,7 @@
 		})
             
         $(window).load(function(){
-        	/*
-            funcLoadDescSalesVolumeData();
-            funcLoadMonthlySalesVolumeData();
-            funcLoadProductCategorySalesVolumeData();
-            funcDefaultSelectDayOfWeekItem(null);
-            */
+        	funcQueryReportPerYear('2015');
         })
 		
 	</script>
@@ -422,28 +421,19 @@
                             <a href="index.html"><i class="fa fa-calendar fa-fw"></i> 연도별 통계 보고서</a>
                         </li>
                         
-                        <!--
                         <li>
-                            <a href="index.html"><i class="fa fa-calendar fa-fw"></i> 기간별 통계 보고서</a>
+                            <a href="#"><i class="fa fa-eye fa-fw"></i> 관점별 통계 보고서(구현중)</a>
                         </li>
+                        
                         <li class="sidebar-search">
                         	<div class="panel panel-default">
-                        		<div class="panel-heading">
-								Start Date
-		                        </div>
+                        		<div class="panel-heading">[상호명] : Cafe Lieto</div>
 		                        <div class="panel-body">
-		                        	<div class="input-group custom-search-form">
-		                                <input type="text" class="form-control" placeholder="Search...">
-		                                <span class="input-group-btn">
-		                                <button class="btn btn-default" type="button">
-		                                    <i class="fa fa-search"></i>
-		                                </button>
-		                            </span>
-		                            </div>
+									<img src="{% static 'images/cafe-lieto-logo.png' %}">
 		                        </div>
 							</div>
                         </li>
-                        -->
+
                     </ul>
                 </div>
                 <!-- /.sidebar-collapse -->
@@ -460,10 +450,26 @@
                     			<td>연도별 통계 보고서</td>
                     			<td align="right"><small></small></td>
 	                    		<td align="right">
+									<div class="btn-group">
+										<button type="button" class="btn btn-default">Year</button>
+										<div class="btn-group" role="group">
+										  <button id="selected_year_caption" type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+										    2015 <span class="caret"></span>
+										  </button>
+										  <ul class="dropdown-menu">
+										    <li><a href="#" onclick="funcQueryReportPerYear('2015');return false;">2015</a></li>
+										    <li role="separator" class="divider"></li>
+										    <li><a href="#" onclick="funcQueryReportPerYear('2014');return false;">2014</a></li>
+										  </ul>
+										</div>
+									</div>
+
+	                    			<!--
 				                	<div class="btn-group" role="group" aria-label="...">
 			  						<button type="button" class="btn btn-default" onclick="funcQueryReportPerYear('2014');return false;">2014</button>
 				  						<button type="button" class="btn btn-default" onclick="funcQueryReportPerYear('2015');return false;">2015</button>
 									</div>
+									-->
 								</td>
 							</tr>
 						</table>

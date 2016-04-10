@@ -19,9 +19,11 @@ class SerPostRequestParam(serializers.Serializer):
     
     
 # Create your views here.
-def index(request):
-    return render(request, 'salest_dashbd/index.html')
+#def index(request):
+#    return render(request, 'salest_dashbd/index.html')
 
+def index(request):
+    return render(request, 'salest_dashbd/summary_report.html')
 
 @api_view(['GET'])
 def get_monthly_sales_volumn_data(request,year):
