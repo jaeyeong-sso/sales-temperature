@@ -6,7 +6,7 @@ REDIS_MASTER_PORT = 6300
 REDIS_SLAVE = 'salest-master-server'
 REDIS_SLAVE_PORT = 6310
 
-KEY_EXPIRE_TIME = 60
+KEY_EXPIRE_TIME = 60 * 60
 
 def write_transaction(key,value):
     

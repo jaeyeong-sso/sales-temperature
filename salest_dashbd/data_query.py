@@ -4,7 +4,6 @@ import pandas as pd
 from impala.dbapi import connect
 from impala.util import as_pandas
 import ast
-import math
 
 import redis_io as redis_io
 
@@ -26,7 +25,7 @@ def agg_montly_sales_volumn(year,unit_numofproduct, unit_totalamount):
     cached_data = redis_io.read_transaction(REDIS_KEY)
     
     if cached_data != None:
-        return cached_data
+        return  ast.literal_eval(cached_data)
     #
     
     conn = connect(host='salest-master-server', port=21050)
@@ -92,7 +91,7 @@ def desc_total_sales_volumn(year):
     cached_data = redis_io.read_transaction(REDIS_KEY)
     
     if cached_data != None:
-        return cached_data
+        return ast.literal_eval(cached_data)
     #
     
     conn = connect(host='salest-master-server', port=21050)
@@ -137,8 +136,8 @@ def agg_montly_total_amount_by_product_cate(year):
     cached_data = redis_io.read_transaction(REDIS_KEY)
     
     if cached_data != None:
-        return cached_data
-    #
+        return ast.literal_eval(cached_data)
+    
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -207,11 +206,11 @@ def agg_montly_total_amount_by_product_cate(year):
 def agg_montly_total_amount_by_product(year, product_cate):
     
     # Redis read cache value
-    REDIS_KEY = "monthly_total_amount_per_product:{0}:{1}".format(year,product_cate)
+    REDIS_KEY = "monthly_total_amount_per_product:{0}:{1}".format(year,product_cate.encode("UTF-8"))
     cached_data = redis_io.read_transaction(REDIS_KEY)
     
     if cached_data != None:
-        return cached_data
+        return ast.literal_eval(cached_data)
     #
     
     conn = connect(host='salest-master-server', port=21050)
@@ -302,7 +301,7 @@ def analysis_timebase_sales_amount(year, day_of_week):
     cached_data = redis_io.read_transaction(REDIS_KEY)
     
     if cached_data != None:
-        return cached_data
+        return ast.literal_eval(cached_data)
     #
     
     conn = connect(host='salest-master-server', port=21050)
@@ -347,6 +346,7 @@ def analysis_timebase_sales_amount(year, day_of_week):
     df_by_weekofday.set_index('time_hour',inplace=True)
     
     cached_data = df_by_weekofday.to_dict()
+    
     # Redis save cache value
     redis_io.write_transaction(REDIS_KEY, cached_data)
     #
