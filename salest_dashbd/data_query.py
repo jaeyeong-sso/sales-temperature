@@ -6,7 +6,28 @@ from impala.util import as_pandas
 import ast
 import math
 
+import redis_io as redis_io
+
+##############################################################################################################
+# REDIS-KEY
+##############################################################################################################
+# monthly_sales_vol:{year}   << agg_montly_sales_volumn(year,unit_numofproduct, unit_totalamount)
+# desc_total_sales_vol:{year}   << def desc_total_sales_volumn(year):
+# monthly_total_amount_per_cate:{year}   << def agg_montly_total_amount_by_product_cate(year):
+# monthly_total_amount_per_product:{year}:{cate}   << def agg_montly_total_amount_by_product(year, product_cate):
+# timebase_sales_amount:{year}:{day_of_week}  << def analysis_timebase_sales_amount(year, day_of_week):
+##############################################################################################################
+
+
 def agg_montly_sales_volumn(year,unit_numofproduct, unit_totalamount):
+    
+    # Redis read cache value
+    REDIS_KEY = "monthly_sales_vol:{0}".format(year)
+    cached_data = redis_io.read_transaction(REDIS_KEY)
+    
+    if cached_data != None:
+        return cached_data
+    #
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -53,6 +74,10 @@ def agg_montly_sales_volumn(year,unit_numofproduct, unit_totalamount):
         
         list_month_sales_volume.append(dict_month_sales_volume.copy())
 
+    # Redis save cache value
+    redis_io.write_transaction(REDIS_KEY, list_month_sales_volume)
+    #
+    
     return list_month_sales_volume
 
 
@@ -61,6 +86,14 @@ def agg_montly_sales_volumn(year,unit_numofproduct, unit_totalamount):
 #################################################################################################################################
 
 def desc_total_sales_volumn(year):
+    
+    # Redis read cache value
+    REDIS_KEY = "desc_total_sales_vol:{0}".format(year)
+    cached_data = redis_io.read_transaction(REDIS_KEY)
+    
+    if cached_data != None:
+        return cached_data
+    #
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -88,10 +121,24 @@ def desc_total_sales_volumn(year):
     df_desc['num_of_product'] = df_desc['num_of_product'].apply(lambda v: round(v))
     df_desc['total_amount'] = df_desc['total_amount'].apply(lambda v: round(v))
     
-    return df_desc.to_dict()
+    cached_data = df_desc.to_dict()
+    
+    # Redis save cache value
+    redis_io.write_transaction(REDIS_KEY, cached_data)
+    #
+    
+    return cached_data
 
 #################################################################################################################################
 def agg_montly_total_amount_by_product_cate(year):
+    
+    # Redis read cache value
+    REDIS_KEY = "monthly_total_amount_per_cate:{0}".format(year)
+    cached_data = redis_io.read_transaction(REDIS_KEY)
+    
+    if cached_data != None:
+        return cached_data
+    #
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -148,12 +195,24 @@ def agg_montly_total_amount_by_product_cate(year):
         mothlyTotalAmountList.append(item)
     mothlyTotalAmountDict['total_amount'] = mothlyTotalAmountList
 
+    # Redis save cache value
+    redis_io.write_transaction(REDIS_KEY, mothlyTotalAmountDict)
+    #
+    
     return mothlyTotalAmountDict
 
 
 #################################################################################################################################
 
 def agg_montly_total_amount_by_product(year, product_cate):
+    
+    # Redis read cache value
+    REDIS_KEY = "monthly_total_amount_per_product:{0}:{1}".format(year,product_cate)
+    cached_data = redis_io.read_transaction(REDIS_KEY)
+    
+    if cached_data != None:
+        return cached_data
+    #
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -226,6 +285,10 @@ def agg_montly_total_amount_by_product(year, product_cate):
         mothlyTotalAmountList.append(item)
     mothlyTotalAmountDict['total_amount'] = mothlyTotalAmountList
     
+    # Redis save cache value
+    redis_io.write_transaction(REDIS_KEY, mothlyTotalAmountDict)
+    #
+    
     return mothlyTotalAmountDict
 
 
@@ -233,6 +296,14 @@ def agg_montly_total_amount_by_product(year, product_cate):
 # day_of_week : W-MON, W-TUE, W-WED, W-THU, W-FRI, W-SAT, W-SUN
 #################################################################################################################################
 def analysis_timebase_sales_amount(year, day_of_week):
+    
+    # Redis read cache value
+    REDIS_KEY = "timebase_sales_amount:{0}:{1}".format(year,day_of_week)
+    cached_data = redis_io.read_transaction(REDIS_KEY)
+    
+    if cached_data != None:
+        return cached_data
+    #
     
     conn = connect(host='salest-master-server', port=21050)
     cur = conn.cursor()
@@ -275,7 +346,12 @@ def analysis_timebase_sales_amount(year, day_of_week):
     df_by_weekofday['total_amount'] = df_by_weekofday.apply(calc_average_amount,axis=1)
     df_by_weekofday.set_index('time_hour',inplace=True)
     
-    return df_by_weekofday.to_dict()
+    cached_data = df_by_weekofday.to_dict()
+    # Redis save cache value
+    redis_io.write_transaction(REDIS_KEY, cached_data)
+    #
+    
+    return cached_data
 
 
 
