@@ -51,8 +51,8 @@ def get_monthly_total_amount_per_product_cate(request,year):
 def get_monthly_total_amount_product_cate_detail(request,year,format=None):
     if request.method == 'POST':
         cateReqParam = request.data['category']
-        if cateReqParam == 'Category':
-            dictData = dao.agg_montly_total_amount_by_product_cate()
+        if cateReqParam == 'All':
+            dictData = dao.agg_montly_total_amount_by_product_cate(year)
         else:
             dictData = dao.agg_montly_total_amount_by_product(year, cateReqParam)       
         content = JSONRenderer().render(dictData)

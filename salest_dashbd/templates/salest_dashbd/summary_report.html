@@ -328,11 +328,13 @@
                         area_chart.setData(dataArr_PerProductCateSalesVolume);
 
                         area_chart.redraw();
-
+                        
+                        $("#menu_cate_items_list").children().remove();
+                        
                         $.each(menuCategoryItems, function(key, value){
                             $("#menu_cate_items_list").append("<li><a href='#' onclick='funcSelectCategoryItem(this);return false;'>" + value + "</a></li>");
                         });
-                        $("#menu_cate_items_list").append("<li><a href='#' onclick='funcSelectCategoryItem(this);return false;'>Category</a></li>");
+                        $("#menu_cate_items_list").append("<li><a href='#' onclick='funcSelectCategoryItem(this);return false;'>All</a></li>");
                         
                         $('#myModal').modal('hide');
                     },
@@ -610,8 +612,8 @@
                             <div class="pull-right">
    								<div class="btn-group">
                                     <button id="menu_cate_items_caption" type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
-										Category
-                                        <span class="caret"></span>
+										All
+                                        <!-- <span class="caret"></span> -->
                                     </button>
                                     <ul id="menu_cate_items_list" class="dropdown-menu pull-right" role="menu">
                                     	<!-- Fill Category Items dynamically -->
@@ -636,7 +638,7 @@
    								<div class="btn-group">
                                     <button id="timebase_sales_amount_items_caption" type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
 										All
-                                        <span class="caret"></span>
+                                        <!--  <span class="caret"></span> -->
                                     </button>
                                     <ul id="timebase_sales_amount_items_list" class="dropdown-menu pull-right" role="menu">
                                     	<!-- Fill Category Items dynamically -->

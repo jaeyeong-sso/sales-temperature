@@ -82,8 +82,8 @@ DATABASES = {
         'NAME': 'django',
         'USER': 'salest',
         'PASSWORD': 'salest',
-        #'HOST': '192.168.118.1',
-        'HOST': 'localhost',
+        'HOST': '192.168.118.1',
+        # 'HOST': 'localhost',
         'PORT': '3306',
     }
 }
@@ -128,8 +128,8 @@ USE_TZ = True
 ######################################################################
 #1. For Dev run
 ######################################################################
-#STATIC_URL = '/static/'
-#STATIC_ROOT = os.path.join(BASE_DIR, 'salest_dashbd')
+# STATIC_URL = '/static/'
+# STATIC_ROOT = os.path.join(BASE_DIR, 'salest_dashbd')
 
 ######################################################################
 #2. For Deployment
