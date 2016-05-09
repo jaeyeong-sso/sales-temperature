@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '+x1_#k@gq96%+dzaq6f63y$1++u8fx=7+ov2!+b3g+@6e*spqm'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'salest_dashbd',
+    'djcelery',
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -82,8 +83,8 @@ DATABASES = {
         'NAME': 'django',
         'USER': 'salest',
         'PASSWORD': 'salest',
-        #'HOST': '192.168.118.1',
-        'HOST': 'localhost',
+        'HOST': '192.168.118.1',
+        #'HOST': 'localhost',
         'PORT': '3306',
     }
 }
@@ -128,18 +129,18 @@ USE_TZ = True
 ######################################################################
 #1. For Dev run
 ######################################################################
-# STATIC_URL = '/static/'
-# STATIC_ROOT = os.path.join(BASE_DIR, 'salest_dashbd')
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'salest_dashbd')
 
 ######################################################################
 #2. For Deployment
 ######################################################################
-STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
-STATIC_URL = '/static/'
+# STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
+# STATIC_URL = '/static/'
 
-STATICFILES_DIRS = (
-    os.path.join(BASE_DIR, 'salest_dashbd/static'),
-)
+# STATICFILES_DIRS = (
+#     os.path.join(BASE_DIR, 'salest_dashbd/static'),
+# )
 ######################################################################
 
 
@@ -163,4 +164,64 @@ REST_FRAMEWORK = {
     'DEFAULT_PARSER_CLASSES': (
         'rest_framework.parsers.JSONParser',
     )
+}
+
+# CELERY SETTINGS
+BROKER_URL = 'redis://salest-master-server:6300'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+"""
+CELERYBEAT_SCHEDULE = {
+    'add-every-10-seconds': {
+        'task': 'tasks.run_kafka_consumer',
+        'schedule': timedelta(seconds=10),
+    },
+}
+
+CELERY_TIMEZONE = 'UTC'
+
+"""
+
+# mysql
+#CELERY_RESULT_BACKEND = 'db+mysql://salest:salest@192.168.118.1:3306/django'
+CELERY_RESULT_BACKEND = 'redis://salest-master-server:6300'
+
+
+# LOGGGING
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format' : "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s",
+            'datefmt' : "%d/%b/%Y %H:%M:%S"
+        },
+        'simple': {
+            'format': '%(message)s'
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': '/var/tmp/salest_dashbd.log',
+            'formatter': 'simple'
+        },
+        'flume': {
+            'level': 'INFO',
+            'class': 'flumelogger.handler.FlumeHandler',
+            'host':'salest-master-server',
+            'port':'4141',
+            'type':'ng',
+            'formatter': 'simple'
+        },           
+    },
+    'loggers': {
+        'salest_dashbd': {
+            'handlers': ['flume'],
+            'level': 'INFO',
+        },
+    }
 }

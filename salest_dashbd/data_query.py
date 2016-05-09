@@ -7,6 +7,11 @@ import ast
 
 import redis_io as redis_io
 
+from pandas.tseries.offsets import MonthEnd
+from dateutil.parser import parse
+
+import numpy as np
+
 ##############################################################################################################
 # REDIS-KEY
 ##############################################################################################################
@@ -255,6 +260,10 @@ def agg_montly_total_amount_by_product(year, product_cate):
     df_topten_products_by_total_amount.drop(['num_of_product'],axis=1, inplace=True)
     df_topten_products_by_total_amount.rename(columns={'total_amount':'overall_total_amount'},inplace=True)
 
+    # Redis save cache value
+    redis_io.write_transaction(product_cate, df_topten_products_by_total_amount.index.tolist(), 60*60*24*7)
+    #
+    
     # Merge the above two dataframes
     df_new = df_per_category.reset_index(level=0)
     df_merged = pd.merge(df_new, df_topten_products_by_total_amount, left_index=True, right_index=True, how='left').sort_values(by='year_month', ascending=True)
@@ -354,7 +363,187 @@ def analysis_timebase_sales_amount(year, day_of_week):
     return cached_data
 
 
+def get_most_popular_products(req_cate_name):
 
+        
+    # Redis read cache value
+    REDIS_KEY = "product_category_info"
+    
+    def get_cache_value(req_cate_name):
+        subKeyList = []
+        subKeyList.append(req_cate_name)
+        return redis_io.read_dict_transaction(REDIS_KEY, subKeyList)
+
+        
+    # Redis read cache value
+    #REDIS_KEY = "product_category_info"
+    #cached_data = redis_io.read_dict_transaction(REDIS_KEY,req_cate_name)
+
+    #if cached_data != None:
+    #    return ast.literal_eval(cached_data[0])
+    cached_data = get_cache_value(req_cate_name)
+    if cached_data != None:
+        return ast.literal_eval(cached_data[0])
+    
+    
+    conn = connect(host='salest-master-server', port=21050)
+    cur = conn.cursor()
+    cur.execute('USE salest')
+
+    dict_product_cate_items = {}
+
+    # Category Items
+
+    queryStr = """
+            SELECT DISTINCT cate_name FROM ext_menumap_info
+            """
+
+    cur.execute(queryStr)
+    df_categories = as_pandas(cur)
+    dict_product_cate_items['All'] = df_categories['cate_name'].values.tolist()
+
+
+    # Most 10 papular items per each category
+
+    for cate_name in dict_product_cate_items['All']:
+        query_str = """
+            SELECT product_name, SUM(sales_amount) AS total_amount
+            FROM
+            (
+                SELECT cate_name,product_name,date_receipt_num,sales_amount
+                FROM 
+                    (SELECT * FROM ext_menumap_info WHERE cate_name = '""" + cate_name + """' ) view_specific_menu JOIN ext_tr_receipt USING (product_code)
+            ) view_tr_specific_cate_menu
+            GROUP BY (view_tr_specific_cate_menu.product_name)
+            ORDER BY (SUM(sales_amount)) DESC
+            LIMIT 10
+            """
+        cur.execute(query_str)
+  
+        df_papular_products = as_pandas(cur)
+        df_papular_products = df_papular_products[df_papular_products.total_amount != 0]
+        dict_product_cate_items[cate_name] = df_papular_products['product_name'].values.tolist()
+
+    conn.close()
+
+    # Redis save cache value
+    redis_io.write_dict_transaction(REDIS_KEY, dict_product_cate_items, 60*60*24)
+    #
+    cached_data = get_cache_value(req_cate_name)
+    return ast.literal_eval(cached_data[0])
+
+
+def get_product_data(product_name):
+    
+    # Redis read cache value
+    REDIS_KEY_PREFIX = "popular_product_info"
+    
+    def get_cache_value(product_name):
+        cache_data = redis_io.read_dict_transaction(REDIS_KEY_PREFIX + ":" + product_name, ['product_code','price'])
+        if cache_data == None:
+            return None
+    
+        dict_data = {}
+        dict_data['product_code'] = cache_data[0]
+        dict_data['price'] = cache_data[1]
+        return dict_data
+    
+
+    cached_data = get_cache_value(product_name)
+    if cached_data != None:
+        return cached_data
+    
+    conn = connect(host='salest-master-server', port=21050)
+    cur = conn.cursor()
+    cur.execute('USE salest')
+  
+    queryStr = """SELECT product_name,price,product_code FROM ext_menumap_info"""
+    
+    cur.execute(queryStr)
+    df_categories = as_pandas(cur)
+
+    df_categories = df_categories[df_categories.price != 0]
+    #df_categories.set_index('product_name', inplace=True)
+    
+    for idx,row in df_categories.iterrows():
+        key = "{0}:{1}".format(REDIS_KEY_PREFIX,row.product_name)
+        value = row[['product_code','price']].to_dict()
+        redis_io.write_dict_transaction(key, value, 60*60)
+    
+    cached_data = redis_io.read_dict_transaction(REDIS_KEY_PREFIX + ":" + product_name, ['product_code','price'])
+    return get_cache_value(product_name)
+
+
+
+def get_timebase_data_on_past_specific_date(cur_date):
+    
+    # Redis read cache value
+    REDIS_KEY_PREFIX = "past_timebase_data_of"
+    
+    def get_cache_value(cur_date):
+        return redis_io.read_dict_transaction(REDIS_KEY_PREFIX + ":" + cur_date) 
+    
+    cached_data = get_cache_value(cur_date)
+    if cached_data != None:
+        return cached_data
+    
+    
+    conn = connect(host='salest-master-server', port=21050)
+    cur = conn.cursor()
+
+    cur.execute('USE salest')
+    
+    date_list = tuple(get_past_target_date(cur_date))
+
+    cur.execute(
+    """
+        SELECT time_hour, CAST(SUM(sales_amount) as INTEGER) AS total_amount, 
+        COUNT(sales_amount) as num_of_transaction,
+        COUNT(DISTINCT year_month_day) as date_count
+        FROM(
+            SELECT SUBSTR(date_receipt_num,1,10) AS year_month_day,
+            SUBSTR(tr_time,1,2) AS time_hour,
+            sales_amount
+            FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,10) IN ('%s')
+            """ % date_list +
+            """
+        ) view_tr_total_amount_by_dayofweek
+        GROUP BY time_hour ORDER BY time_hour ASC
+        """
+    )
+    df_by_hour = as_pandas(cur)
+    conn.close()
+    
+    df_by_hour.set_index('time_hour',inplace=True)
+    df_by_hour = df_by_hour.reindex([[str(i) for i in np.arange(10,24)]],fill_value=0)
+
+    dict_result = df_by_hour['total_amount'].to_dict()
+    dict_result['date'] = date_list[0]
+     
+    redis_io.write_dict_transaction(REDIS_KEY_PREFIX + ":" + cur_date, dict_result, 60*60)
+    
+    ret_dict = get_cache_value(cur_date)
+
+    return ret_dict
+
+
+def get_timebase_data_on_today_specific_date(cur_date):
+    
+    # Redis read cache value
+    REDIS_KEY_PREFIX = "today_timebase_data_of"
+    
+    dictData = {}
+    
+    for time_idx in np.arange(10,24):
+        cache_value = redis_io.read_transaction("{0}:{1}:{2}".format(REDIS_KEY_PREFIX,cur_date,time_idx))
+        if cache_value != None:
+            dictData[str(time_idx)] = str(cache_value)
+        else:
+            dictData[str(time_idx)] = str(0)
+        
+    return dictData
+
+    
 #################################################################################################################################
 # Utility Functions
 #################################################################################################################################
@@ -396,3 +585,22 @@ def genDefaultMontlyCateTotalAmountDataFrame(df_monthly_product_tr,year, second_
                                                   names=['year_month', second_index_name])
     df_full_month_cate_default = pd.DataFrame(0, index=full_month_cate_multi_index, columns=['total_amount'])
     return df_full_month_cate_default
+
+def get_past_target_date(date_year_mon_day):
+    
+    day_of_week_map = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+
+    date_val = parse(date_year_mon_day)
+
+    last_day_of_month = (date_val + MonthEnd()).day
+    week_number = (date_val.day - 1) // 7 + 1
+    
+    freq_faram = "WOM-{0}{1}".format(week_number, day_of_week_map[date_val.weekday()])
+
+    last_year_day_start = "{0}-{1}-01".format(date_val.year-1, date_val.month)
+    last_year_day_end =  "{0}-{1}-{2}".format(date_val.year-1, date_val.month, last_day_of_month)
+
+    target_date_idx = pd.date_range(last_year_day_start, last_year_day_end, freq=freq_faram)
+
+    date_list = target_date_idx.strftime('%Y-%m-%d').tolist()
+    return date_list
