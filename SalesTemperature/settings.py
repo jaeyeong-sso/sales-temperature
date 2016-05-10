@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '+x1_#k@gq96%+dzaq6f63y$1++u8fx=7+ov2!+b3g+@6e*spqm'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -83,8 +83,8 @@ DATABASES = {
         'NAME': 'django',
         'USER': 'salest',
         'PASSWORD': 'salest',
-        'HOST': '192.168.118.1',
-        #'HOST': 'localhost',
+        #'HOST': '192.168.118.1',
+        'HOST': 'localhost',
         'PORT': '3306',
     }
 }
@@ -129,18 +129,18 @@ USE_TZ = True
 ######################################################################
 #1. For Dev run
 ######################################################################
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'salest_dashbd')
+# STATIC_URL = '/static/'
+# STATIC_ROOT = os.path.join(BASE_DIR, 'salest_dashbd')
 
 ######################################################################
 #2. For Deployment
 ######################################################################
-# STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
-# STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'statics')   # collectstatic would generate static resource to here.
+STATIC_URL = '/static/'
 
-# STATICFILES_DIRS = (
-#     os.path.join(BASE_DIR, 'salest_dashbd/static'),
-# )
+STATICFILES_DIRS = (
+     os.path.join(BASE_DIR, 'salest_dashbd/static'),
+)
 ######################################################################
 
 
