@@ -37,11 +37,14 @@ def agg_montly_sales_volumn(year,unit_numofproduct, unit_totalamount):
     cur = conn.cursor()
 
     cur.execute('USE salest')
+    
+    bIsRealTimeUpdated = REFRESH_IMPALA_TABLE(cur, year)
+    
     cur.execute("""
         SELECT year_month, SUM(num_of_product) AS num_of_product, SUM(sales_amount) AS total_amount
         FROM (
             SELECT SUBSTR(date_receipt_num,1,7) AS year_month, num_of_product, sales_amount
-            FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,4) = '""" + year +
+            FROM """ + GET_IMPALA_TB_NAME(year) + """ WHERE SUBSTR(date_receipt_num,1,4) = '""" + year +
         """'
         ) view_tr_recipt
         GROUP BY year_month ORDER BY year_month ASC
@@ -78,9 +81,10 @@ def agg_montly_sales_volumn(year,unit_numofproduct, unit_totalamount):
         
         list_month_sales_volume.append(dict_month_sales_volume.copy())
 
-    # Redis save cache value
-    redis_io.write_transaction(REDIS_KEY, list_month_sales_volume)
-    #
+    if bIsRealTimeUpdated == False:
+        # Redis save cache value
+        redis_io.write_transaction(REDIS_KEY, list_month_sales_volume)
+        #
     
     return list_month_sales_volume
 
@@ -104,11 +108,14 @@ def desc_total_sales_volumn(year):
 
     # daily transaction agg
     cur.execute('USE salest')
+    
+    bIsRealTimeUpdated = REFRESH_IMPALA_TABLE(cur, year)
+        
     cur.execute("""
         SELECT year_month_day, SUM(num_of_product) AS num_of_product, SUM(sales_amount) AS total_amount
         FROM (
             SELECT SUBSTR(date_receipt_num,1,10) AS year_month_day, num_of_product, sales_amount
-            FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,4) = '""" + year +
+            FROM """ + GET_IMPALA_TB_NAME(year) + """ WHERE SUBSTR(date_receipt_num,1,4) = '""" + year +
         """'
         ) view_tr_recipt
         GROUP BY year_month_day ORDER BY year_month_day ASC
@@ -125,13 +132,19 @@ def desc_total_sales_volumn(year):
     df_desc['num_of_product'] = df_desc['num_of_product'].apply(lambda v: round(v))
     df_desc['total_amount'] = df_desc['total_amount'].apply(lambda v: round(v))
     
+    df_desc.fillna(0, inplace=True)
+    
     cached_data = df_desc.to_dict()
     
-    # Redis save cache value
-    redis_io.write_transaction(REDIS_KEY, cached_data)
-    #
+    if bIsRealTimeUpdated == False:
+        # Redis save cache value
+        redis_io.write_transaction(REDIS_KEY, cached_data)
+        #
+        cached_data = redis_io.read_transaction(REDIS_KEY)
+        cached_data = ast.literal_eval(cached_data)
     
     return cached_data
+
 
 #################################################################################################################################
 def agg_montly_total_amount_by_product_cate(year):
@@ -148,12 +161,15 @@ def agg_montly_total_amount_by_product_cate(year):
     cur = conn.cursor()
 
     cur.execute('USE salest')
+    
+    bIsRealTimeUpdated = REFRESH_IMPALA_TABLE(cur, year)
+        
     cur.execute(
     """
         SELECT SUBSTR(view_tr_receipt.date_receipt_num,1,7) AS year_month, 
               view_tr_receipt.num_of_product, view_tr_receipt.sales_amount AS total_amount,
             ext_menumap_info.product_name, ext_menumap_info.cate_name, ext_menumap_info.price
-        FROM (SELECT * FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,4) = '""" + year + "'" +
+        FROM (SELECT * FROM """ + GET_IMPALA_TB_NAME(year) + """ WHERE SUBSTR(date_receipt_num,1,4) = '""" + year + "'" +
     """) view_tr_receipt JOIN ext_menumap_info USING (product_code)"""
     )
 
@@ -199,9 +215,10 @@ def agg_montly_total_amount_by_product_cate(year):
         mothlyTotalAmountList.append(item)
     mothlyTotalAmountDict['total_amount'] = mothlyTotalAmountList
 
-    # Redis save cache value
-    redis_io.write_transaction(REDIS_KEY, mothlyTotalAmountDict)
-    #
+    if bIsRealTimeUpdated == False:
+        # Redis save cache value
+        redis_io.write_transaction(REDIS_KEY, mothlyTotalAmountDict)
+        #
     
     return mothlyTotalAmountDict
 
@@ -223,12 +240,14 @@ def agg_montly_total_amount_by_product(year, product_cate):
     
     cur.execute('USE salest')
     
+    bIsRealTimeUpdated = REFRESH_IMPALA_TABLE(cur, year)
+    
     query_str = """
         SELECT * FROM (
             SELECT SUBSTR(view_tr_receipt.date_receipt_num,1,7) AS year_month, 
                   view_tr_receipt.num_of_product, view_tr_receipt.sales_amount AS total_amount,
                   ext_menumap_info.product_name, ext_menumap_info.cate_name, ext_menumap_info.price
-            FROM (SELECT * FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,4) = '%s'
+            FROM (SELECT * FROM """ + GET_IMPALA_TB_NAME(year) + """ WHERE SUBSTR(date_receipt_num,1,4) = '%s'
             ) view_tr_receipt JOIN ext_menumap_info USING (product_code)
         ) view_tr_receipt_menumap
         WHERE cate_name = '%s'
@@ -293,9 +312,10 @@ def agg_montly_total_amount_by_product(year, product_cate):
         mothlyTotalAmountList.append(item)
     mothlyTotalAmountDict['total_amount'] = mothlyTotalAmountList
     
-    # Redis save cache value
-    redis_io.write_transaction(REDIS_KEY, mothlyTotalAmountDict)
-    #
+    if bIsRealTimeUpdated == False:
+        # Redis save cache value
+        redis_io.write_transaction(REDIS_KEY, mothlyTotalAmountDict)
+        #
     
     return mothlyTotalAmountDict
 
@@ -318,6 +338,8 @@ def analysis_timebase_sales_amount(year, day_of_week):
 
     cur.execute('USE salest')
     
+    bIsRealTimeUpdated = REFRESH_IMPALA_TABLE(cur, year)
+        
     start_date = "%s/01/01" % year
     end_date = "%s/12/31" % year
     
@@ -338,7 +360,7 @@ def analysis_timebase_sales_amount(year, day_of_week):
             SELECT SUBSTR(date_receipt_num,1,10) AS year_month_day,
             SUBSTR(tr_time,1,2) AS time_hour,
             sales_amount
-            FROM ext_tr_receipt WHERE SUBSTR(date_receipt_num,1,10) IN %s
+            FROM """ + GET_IMPALA_TB_NAME(year) + """ WHERE SUBSTR(date_receipt_num,1,10) IN %s
             """ % (target_date_tuple,) +
             """
         ) view_tr_total_amount_by_dayofweek
@@ -356,9 +378,10 @@ def analysis_timebase_sales_amount(year, day_of_week):
     
     cached_data = df_by_weekofday.to_dict()
     
-    # Redis save cache value
-    redis_io.write_transaction(REDIS_KEY, cached_data)
-    #
+    if bIsRealTimeUpdated == False:
+        # Redis save cache value
+        redis_io.write_transaction(REDIS_KEY, cached_data)
+        #
     
     return cached_data
 
@@ -427,7 +450,7 @@ def get_most_popular_products(req_cate_name):
     conn.close()
 
     # Redis save cache value
-    redis_io.write_dict_transaction(REDIS_KEY, dict_product_cate_items, 60*60*24)
+    redis_io.write_dict_transaction(REDIS_KEY, dict_product_cate_items, 60*60*24*30)
     #
     cached_data = get_cache_value(req_cate_name)
     return ast.literal_eval(cached_data[0])
@@ -468,7 +491,7 @@ def get_product_data(product_name):
     for idx,row in df_categories.iterrows():
         key = "{0}:{1}".format(REDIS_KEY_PREFIX,row.product_name)
         value = row[['product_code','price']].to_dict()
-        redis_io.write_dict_transaction(key, value, 60*60)
+        redis_io.write_dict_transaction(key, value, 60*60*24*30)
     
     cached_data = redis_io.read_dict_transaction(REDIS_KEY_PREFIX + ":" + product_name, ['product_code','price'])
     return get_cache_value(product_name)
@@ -604,3 +627,17 @@ def get_past_target_date(date_year_mon_day):
 
     date_list = target_date_idx.strftime('%Y-%m-%d').tolist()
     return date_list
+
+def GET_IMPALA_TB_NAME(year):
+    if year == '2016':
+        return'tmp_ext_tr_receipt'
+    else:
+        return 'ext_tr_receipt'
+    
+def REFRESH_IMPALA_TABLE(cursor, year):
+    if year == '2016':
+        cursor.execute("REFRESH tmp_ext_tr_receipt")
+        return True
+    else :
+        return False
+        

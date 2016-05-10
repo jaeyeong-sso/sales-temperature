@@ -30,7 +30,7 @@ class SerPostRequestParam(serializers.Serializer):
 #    return render(request, 'salest_dashbd/index.html')
 
 def index(request):
-    return realtime_report(request)
+    return stats_report(request)
 
 def stats_report(request):
     return render(request, 'salest_dashbd/stats_report.html')
