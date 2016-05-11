@@ -16,8 +16,10 @@ import redis_io as redis_io
 import threading
 
 from SalesTemperature.tasks import KafkaConsumerTask
+from _ast import IsNot
 
 logger = logging.getLogger(__name__)
+
 
 class SerPostRequestParam(serializers.Serializer):
     category = serializers.CharField()
@@ -124,9 +126,7 @@ def req_write_transaction_log(request):
 @api_view(['GET'])
 def get_timebase_data_on_past_specific_date(request,date):
     if request.method == 'GET':
-        
-        EventConsumerThread().start()
-        
+
         pastDictData = dao.get_timebase_data_on_past_specific_date(date)
         todayDictData = dao.get_timebase_data_on_today_specific_date(date)
         
@@ -152,8 +152,3 @@ def get_timebase_data_on_today_specific_date(request,date):
         dictData = dao.get_timebase_data_on_today_specific_date(date)
         content = JSONRenderer().render(dictData)
         return Response(content, status=status.HTTP_200_OK)
-    
-    
-class EventConsumerThread(threading.Thread):
-    def run(self):
-        KafkaConsumerTask.run()

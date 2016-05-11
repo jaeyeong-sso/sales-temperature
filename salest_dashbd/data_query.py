@@ -558,11 +558,14 @@ def get_timebase_data_on_today_specific_date(cur_date):
     dictData = {}
     
     for time_idx in np.arange(10,24):
-        cache_value = redis_io.read_transaction("{0}:{1}:{2}".format(REDIS_KEY_PREFIX,cur_date,time_idx))
-        if cache_value != None:
-            dictData[str(time_idx)] = str(cache_value)
-        else:
+        cache_value = redis_io.read_dict_transaction("{0}:{1}:{2}".format(REDIS_KEY_PREFIX,cur_date,time_idx))
+        if cache_value == None:
             dictData[str(time_idx)] = str(0)
+        else :
+            if len(cache_value) > 0:
+                dictData[str(time_idx)] = cache_value['total_amount']
+            else:
+                dictData[str(time_idx)] = str(0)
         
     return dictData
 
